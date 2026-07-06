@@ -28,8 +28,26 @@ pub struct ShikimoriAnime {
 }
 
 impl fmt::Display for ShikimoriAnime {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} ({})", self.russian.clone().unwrap_or(self.name.clone()), self.id)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct SeasonItem(pub u32, pub Season);
+
+impl fmt::Display for SeasonItem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Сезон: {}, Эпизодов:{}", self.0, self.1.episodes.len())
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct EpisodeItem(pub u32, pub String);
+
+impl fmt::Display for EpisodeItem {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Эпизод {}", self.0)
     }
 }
 
@@ -46,6 +64,7 @@ pub async fn search_shikimori(client: &ReqwestClient, query: &str) -> Result<Vec
         .json()
         .await
         .context(NotFound::ShikimoriAnime(query.to_string()))?;
+    anyhow::ensure!(!(response.len() == 0), NotFound::ShikimoriAnime(query.to_string()));
 
     Ok(response)
 }
@@ -66,43 +85,39 @@ pub async fn get_releases(search_response: &SearchResponse) -> Result<Vec<&Relea
     let releases: Vec<&Release> = search_response
         .results
         .iter()
-        .map(|r| r)
         .collect();
     anyhow::ensure!(!(releases.len() == 0), NotFound::Releases);
     Ok(releases)
 }
 
-pub async fn get_seasons(releases: &Vec<Release>) -> Result<Vec<(u32, &Season)>> {
-    let mut seasons: Vec<(u32, &Season)> = releases
+pub async fn get_seasons(release: Release) -> Result<Vec<SeasonItem>> {
+    let mut seasons: Vec<SeasonItem> = release
+        .seasons.context(NotFound::Seasons)?
         .iter()
-        .map(|r| r.seasons.as_ref().ok_or_else(|| NotFound::Seasons))
-        .collect::<Result<Vec<_>, _>>()?
-        .into_iter()
-        .flat_map(|seasons_map| {
-            seasons_map.iter().filter_map(|(k, season)| {
-                let num: u32 = k.parse().ok()?;
-                Some((num, season))
-            })
+        .filter_map(|(k, season)| {
+            let num: u32 = k.parse().ok()?;
+            Some(SeasonItem(num, season.clone()))
         })
         .collect();
-
-    seasons.sort_by_key(|(num, _)| *num);
+    anyhow::ensure!(!(seasons.len() == 0), NotFound::Seasons);
+    seasons.sort_by_key(|SeasonItem(num, _)| *num);
     Ok(seasons)
 }
 
-pub async fn get_episodes(season: &Season) -> Vec<(u32, &str)> {
-    let mut items: Vec<(u32, &str)> = season
+pub async fn get_episodes(season: &Season) -> Result<Vec<EpisodeItem>> {
+    let mut episodes: Vec<EpisodeItem> = season
         .episodes
         .iter()
         .filter_map(|(key, ep)| {
             let num: u32 = key.parse().ok()?;
             let link = match ep {
-                EpisodeUnion::Link(url) => url.as_str(),
-                EpisodeUnion::Episode(episode) => episode.link.as_str(),
+                EpisodeUnion::Link(url) => url.clone(),
+                EpisodeUnion::Episode(episode) => episode.link.clone(),
             };
-            Some((num, link))
+            Some(EpisodeItem(num, link))
         })
         .collect();
-    items.sort_by_key(|(num, _)| *num);
-    items
+    anyhow::ensure!(!(episodes.len() == 0), NotFound::Episodes);
+    episodes.sort_by_key(|EpisodeItem(num, _)| *num);
+    Ok(episodes)
 }

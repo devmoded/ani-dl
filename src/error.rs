@@ -8,8 +8,10 @@ pub enum NotFound {
     Releases,
     #[error("По запросу \"{0}\" не удалось найти аниме в Shikimori")]
     ShikimoriAnime(String),
-    #[error("Не найдены сезоны")]
+    #[error("Сезоны не найдены")]
     Seasons,
+    #[error("Эпизоды не найдены")]
+    Episodes,
     #[error("Переменная окружения KODIK_API_KEY не указана")]
     KodikApiKey,
 }

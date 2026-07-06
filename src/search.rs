@@ -1,49 +1,79 @@
 use anyhow::{Context, Result};
-use kodik_api::Client;
+use std::fmt;
+use kodik_api::Client as KodikClient;
+use reqwest::Client as ReqwestClient;
 use kodik_api::search::{SearchQuery, SearchResponse};
-use kodik_api::types::{Release, Season, EpisodeUnion, TranslationType};
+use kodik_api::types::{Release, Season, EpisodeUnion};
+use serde::Deserialize;
 
-use crate::error::NotFound;
+use super::error::NotFound;
 
-pub async fn search_titles(client: &Client, title: &str) -> Result<SearchResponse> {
-    let shikimori_id = get_shikimori_id(&client, title).await?;
+pub struct ReleaseItem<'a>(pub &'a Release);
 
+impl fmt::Display for ReleaseItem<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{} - {} ({})",
+            self.0.title,
+            self.0.translation.title,
+            self.0.translation.id
+        )
+    }
+}
+
+#[derive(Deserialize)]
+pub struct ShikimoriAnime {
+    pub id: u64,
+    pub name: String,
+    pub russian: Option<String>,
+}
+
+impl fmt::Display for ShikimoriAnime {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} ({})", self.russian.clone().unwrap_or(self.name.clone()), self.id)
+    }
+}
+
+pub async fn search_shikimori(client: &ReqwestClient, query: &str) -> Result<Vec<ShikimoriAnime>> {
+    let response: Vec<ShikimoriAnime> = client
+        .get("https://shikimori.io/api/animes")
+        .query(&[
+            ("search", query),
+            ("limit", "10"),
+            ("order", "popularity"),
+        ])
+        .send()
+        .await?
+        .json()
+        .await
+        .context(NotFound::ShikimoriAnime(query.to_string()))?;
+
+    Ok(response)
+}
+
+pub async fn search_titles(client: &KodikClient, shikimori_id: &str) -> Result<SearchResponse> {
     let search_response = SearchQuery::new()
-        .with_shikimori_id(&shikimori_id)
+        .with_shikimori_id(shikimori_id)
+        // .with_title(title)
         .with_episodes(true)
         .execute(&client)
-        .await?;
+        .await
+        .context(NotFound::SearchId(shikimori_id.to_string()))?;
 
    Ok(search_response)
 }
 
-pub async fn get_shikimori_id(client: &Client, title: &str) -> Result<String> {
-    let response = SearchQuery::new()
-        .with_title(title)
-        .with_limit(1)
-        .execute(&client)
-        .await?;
-
-    let shikimori_id = response.results.first()
-        .ok_or_else(|| NotFound::Search(title.to_string()))?
-        .clone()
-        .shikimori_id
-        .ok_or_else(|| NotFound::ShikimoriId(title.to_string()))?;
-
-    Ok(shikimori_id)
-}
-
-pub async fn get_releases(search_response: &SearchResponse) -> Vec<Release> {
-    let voice_releases: Vec<Release> = search_response
+pub async fn get_releases(search_response: &SearchResponse) -> Result<Vec<&Release>> {
+    let releases: Vec<&Release> = search_response
         .results
         .iter()
-        .map(|r| r.clone())
+        .map(|r| r)
         .collect();
-    voice_releases
+    anyhow::ensure!(!(releases.len() == 0), NotFound::Releases);
+    Ok(releases)
 }
 
-pub async fn get_seasons(releases: &Vec<Release>) -> Result<Vec<(u32, Season)>> {
-    let mut seasons: Vec<(u32, Season)> = releases
+pub async fn get_seasons(releases: &Vec<Release>) -> Result<Vec<(u32, &Season)>> {
+    let mut seasons: Vec<(u32, &Season)> = releases
         .iter()
         .map(|r| r.seasons.as_ref().ok_or_else(|| NotFound::Seasons))
         .collect::<Result<Vec<_>, _>>()?
@@ -51,7 +81,7 @@ pub async fn get_seasons(releases: &Vec<Release>) -> Result<Vec<(u32, Season)>> 
         .flat_map(|seasons_map| {
             seasons_map.iter().filter_map(|(k, season)| {
                 let num: u32 = k.parse().ok()?;
-                Some((num, season.clone()))
+                Some((num, season))
             })
         })
         .collect();

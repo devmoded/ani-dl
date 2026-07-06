@@ -4,6 +4,7 @@ mod cli;
 mod media;
 mod types;
 mod shikimori;
+mod config;
 
 use anyhow::Result;
 

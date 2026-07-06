@@ -6,13 +6,19 @@ use std::path::PathBuf;
 use clap::Parser;
 
 use crate::media;
-use crate::error::NotFound;
+use crate::error::{NotFound, ShikimoriError};
 use crate::types::ReleaseItem;
 use crate::shikimori::Search as ShikimoriSearch;
 use crate::search;
+use crate::config::Config;
 
+/// CLI для просмотра/скачивания аниме
+///
+/// Для указания ключа Kodik API в файле конфигурации
+/// (по умолчанию создаётся в `~/.config/ani-dl/config.toml` при первом запуске)
+/// напишите `kodik_api_key = "ваш ключ"`
 #[derive(Parser, Debug)]
-#[command(name = "ani-dl", about = "CLI для просмотра/скачивания аниме")]
+#[command(name = "ani-dl")]
 struct Cli {
     /// Название аниме-тайтла
     query: Option<String>,
@@ -32,6 +38,7 @@ struct Cli {
 
 pub async fn run() -> Result<()> {
     let cli = Cli::parse();
+    let config = Config::load()?;
 
     const KODIK_KEY_SCRIPT: &str = include_str!("../scripts/gen_kodik_key.py");
     if cli.gen_kodik_key_script {
@@ -39,7 +46,7 @@ pub async fn run() -> Result<()> {
         return Ok(())
     }
 
-    let api_key = std::env::var("KODIK_API_KEY").context(NotFound::KodikApiKey)?;
+    let api_key = config.kodik_api_key.context(NotFound::KodikApiKey)?;
     let kodik_client = KodikClient::new(api_key);
 
     let query = match cli.query {
@@ -52,7 +59,7 @@ pub async fn run() -> Result<()> {
         .build()?;
 
     let shikimori_response = ShikimoriSearch::new()
-        .with_api_url("https://shikimori.io/api/animes")
+        .with_api_url(&config.shikimori_api_url.context(ShikimoriError::ApiUrlNotSet)?)
         .execute(&reqwest_client, &query, 10)
         .await?;
     let selected_anime = inquire::Select::new("Выберите аниме:", shikimori_response).prompt()?;

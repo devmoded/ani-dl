@@ -10,7 +10,7 @@ pub enum NotFound {
     Seasons,
     #[error("Эпизоды не найдены")]
     Episodes,
-    #[error("Переменная окружения KODIK_API_KEY не указана")]
+    #[error("Ключ Kodik API не указан")]
     KodikApiKey,
     #[error("Не удалось найти URL для разрешения 720p")]
     Url720p,
@@ -23,7 +23,7 @@ pub enum NotFound {
 }
 
 #[derive(Debug, Error)]
-pub enum Shikimori {
+pub enum ShikimoriError {
     #[error("По запросу \"{0}\" не удалось найти аниме в Shikimori")]
     NotFound(String),
     #[error("URL для API не задан")]
@@ -38,4 +38,18 @@ pub enum Crash {
     Ffmpeg,
     #[error("Не удалось распарсить ответ Shikimori")]
     ShikimoriParse,
+}
+
+#[derive(Debug, Error)]
+pub enum ConfigError {
+    #[error("Не удалось распарсить конфиг: \"{0}\"")]
+    Parse(String),
+    #[error("Не удалось прочитать файл конфига: \"{0}\"")]
+    Read(String),
+    #[error("Не удалось записать файл конфига: \"{0}\"")]
+    Write(String),
+    #[error("Не удалось создать директорию для конфига: \"{0}\"")]
+    CreateDir(String),
+    #[error("Не удалось найти конфиг")]
+    NotFound,
 }

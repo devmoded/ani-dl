@@ -3,7 +3,7 @@ use anyhow::{Context, Result};
 use reqwest::Client as ReqwestClient;
 use serde::Deserialize;
 
-use crate::error::{Shikimori, Crash};
+use crate::error::{ShikimoriError, Crash};
 
 #[derive(Deserialize, Debug)]
 pub struct Anime {
@@ -39,7 +39,7 @@ impl Search {
 
     pub async fn execute(&self, reqwest_client: &ReqwestClient, query: &str, limit: u32) -> Result<Vec<Anime>> {
         let response: Vec<Anime> = reqwest_client
-            .get(self.api_url.clone().context(Shikimori::ApiUrlNotSet)?)
+            .get(self.api_url.clone().context(ShikimoriError::ApiUrlNotSet)?)
             .query(&[
                 ("search", query),
                 ("limit", &limit.to_string()),
@@ -47,11 +47,11 @@ impl Search {
             ])
             .send()
             .await
-            .context(Shikimori::NotFound(query.to_string()))?
+            .context(ShikimoriError::NotFound(query.to_string()))?
             .json()
             .await
             .context(Crash::ShikimoriParse)?;
-        anyhow::ensure!(!(response.len() == 0), Shikimori::NotFound(query.to_string()));
+        anyhow::ensure!(!(response.len() == 0), ShikimoriError::NotFound(query.to_string()));
 
         Ok(response)
     }

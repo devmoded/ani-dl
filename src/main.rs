@@ -1,6 +1,9 @@
 mod error;
 mod search;
 mod cli;
+mod media;
+mod types;
+mod shikimori;
 
 use anyhow::Result;
 

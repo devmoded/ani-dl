@@ -1,9 +1,15 @@
 use anyhow::{Context, Result};
+use kodik_parser::reqwest::Client as KodikParserClient;
 use kodik_api::Client as KodikClient;
 use reqwest::Client as ReqwestClient;
+use std::path::PathBuf;
 use clap::Parser;
-use super::error::NotFound;
-use super::search;
+
+use crate::media;
+use crate::error::NotFound;
+use crate::types::ReleaseItem;
+use crate::shikimori::Search as ShikimoriSearch;
+use crate::search;
 
 #[derive(Parser, Debug)]
 #[command(name = "ani-dl", about = "CLI для просмотра/скачивания аниме")]
@@ -45,15 +51,18 @@ pub async fn run() -> Result<()> {
         .user_agent("ani-dl-rust/0.1")
         .build()?;
 
-    let shikimori_response = search::search_shikimori(&reqwest_client, &query).await?;
+    let shikimori_response = ShikimoriSearch::new()
+        .with_api_url("https://shikimori.io/api/animes")
+        .execute(&reqwest_client, &query, 10)
+        .await?;
     let selected_anime = inquire::Select::new("Выберите аниме:", shikimori_response).prompt()?;
 
     let search_response = search::search_titles(&kodik_client, &selected_anime.id.to_string()).await?;
 
-    let releases: Vec<search::ReleaseItem> = search::get_releases(&search_response)
+    let releases: Vec<ReleaseItem> = search::get_releases(&search_response)
         .await?
         .iter()
-        .map(|r| search::ReleaseItem(r))
+        .map(|r| ReleaseItem(r))
         .collect();
 
     let selected_translate = inquire::Select::new("Выберите перевод:", releases).prompt()?;
@@ -67,11 +76,37 @@ pub async fn run() -> Result<()> {
         seasons.first().cloned().context(NotFound::Seasons)?.1
     };
 
-    let episodes = search::get_episodes(&selected_season).await?;
-    let selected_episode = inquire::Select::new("Выберите эпизод:", episodes).prompt()?;
+    // TODO: Добавить настройку длины отступа длины нулями через CLI
+    let episodes = search::get_episodes(&selected_season, &selected_translate, &PathBuf::from(&cli.output)).await?;
 
-    println!("{}", selected_anime);
-    println!("{}", selected_translate);
-    println!("{}: {}", selected_episode.0, selected_episode.1);
+    // println!("{}", selected_anime);
+    // println!("{}", selected_translate);
+    // println!("{}: {}", selected_episode.0, selected_episode.1);
+    // println!("{:#?}", {
+    //     selected_episodes
+    //         .iter()
+    //         .map(|e| format!("{}: {}", e.0, e.1))
+    //         .collect::<Vec<_>>()
+    // });
+
+    let kodik_parser_client = KodikParserClient::new();
+
+    if cli.download {
+        let selected_episodes = inquire::MultiSelect::new("Выберите эпизоды:", episodes).prompt()?;
+        anyhow::ensure!(!(selected_episodes.len() == 0), NotFound::Select);
+
+        media::download_selected(&selected_episodes, &kodik_parser_client, &reqwest_client).await?;
+    } else {
+        let selected_episode = inquire::Select::new("Выберите эпизод:", episodes).prompt()?;
+
+        let url = format!("https:{}", selected_episode.url);
+        let kodik_response = kodik_parser::parse(&kodik_parser_client, &url).await?;
+        let link_720p = &kodik_response.links.quality_720
+            .first()
+            .context(NotFound::Url720p)?
+            .src;
+        media::play(&link_720p).await?;
+    }
+
     Ok(())
 }

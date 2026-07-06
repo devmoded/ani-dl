@@ -6,9 +6,11 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.103"
 clap = { version = "4.6.1", features = ["derive"] }
+futures = "0.3.32"
+indicatif = "0.18.6"
 inquire = "0.9.4"
-inquire-derive = "0.9.4"
 kodik-api = "0.4.0"
+kodik-parser = "3.0.1"
 reqwest = "0.13.4"
 serde = "1.0.228"
 thiserror = "2.0.18"

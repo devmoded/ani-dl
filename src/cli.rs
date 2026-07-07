@@ -10,7 +10,7 @@ use crate::error::{NotFound, ShikimoriError};
 use crate::types::ReleaseItem;
 use crate::shikimori::Search as ShikimoriSearch;
 use crate::search;
-use crate::config::Config;
+use crate::config::{Config, APP_VERSION};
 
 /// CLI для просмотра/скачивания аниме
 ///
@@ -18,7 +18,7 @@ use crate::config::Config;
 /// (по умолчанию создаётся в `~/.config/ani-dl/config.toml` при первом запуске)
 /// напишите `kodik_api_key = "ваш ключ"`
 #[derive(Parser, Debug)]
-#[command(name = "ani-dl")]
+#[command(name = "ani-dl", version)]
 struct Cli {
     /// Название аниме-тайтла
     query: Option<String>,
@@ -55,7 +55,7 @@ pub async fn run() -> Result<()> {
     };
 
     let reqwest_client = ReqwestClient::builder()
-        .user_agent("ani-dl-rust/0.2.0")
+        .user_agent(format!("ani-dl-rust/{APP_VERSION}"))
         .build()?;
 
     let shikimori_response = ShikimoriSearch::new()

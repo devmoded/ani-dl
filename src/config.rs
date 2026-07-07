@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::ConfigError;
 
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[derive(Deserialize, Serialize)]
 pub struct Config {
     pub kodik_api_key: Option<String>,

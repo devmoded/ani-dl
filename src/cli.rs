@@ -55,7 +55,7 @@ pub async fn run() -> Result<()> {
     };
 
     let reqwest_client = ReqwestClient::builder()
-        .user_agent("ani-dl-rust/0.1")
+        .user_agent("ani-dl-rust/0.2.0")
         .build()?;
 
     let shikimori_response = ShikimoriSearch::new()
@@ -86,16 +86,6 @@ pub async fn run() -> Result<()> {
     // TODO: Добавить настройку длины отступа длины нулями через CLI
     let episodes = search::get_episodes(&selected_season, &selected_translate, &PathBuf::from(&cli.output)).await?;
 
-    // println!("{}", selected_anime);
-    // println!("{}", selected_translate);
-    // println!("{}: {}", selected_episode.0, selected_episode.1);
-    // println!("{:#?}", {
-    //     selected_episodes
-    //         .iter()
-    //         .map(|e| format!("{}: {}", e.0, e.1))
-    //         .collect::<Vec<_>>()
-    // });
-
     let kodik_parser_client = KodikParserClient::new();
 
     if cli.download {
@@ -106,13 +96,7 @@ pub async fn run() -> Result<()> {
     } else {
         let selected_episode = inquire::Select::new("Выберите эпизод:", episodes).prompt()?;
 
-        let url = format!("https:{}", selected_episode.url);
-        let kodik_response = kodik_parser::parse(&kodik_parser_client, &url).await?;
-        let link_720p = &kodik_response.links.quality_720
-            .first()
-            .context(NotFound::Url720p)?
-            .src;
-        media::play(&link_720p).await?;
+        media::play(&selected_episode, &kodik_parser_client).await?;
     }
 
     Ok(())

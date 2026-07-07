@@ -34,10 +34,12 @@ pub enum ShikimoriError {
 pub enum Crash {
     #[error("Работа mpv завершилась с ошибкой")]
     Mpv,
-    #[error("Работа ffmpeg завершилась с ошибкой")]
-    Ffmpeg,
+    #[error("Работа ffmpeg завершилась с ошибкой: {0}")]
+    Ffmpeg(String),
     #[error("Не удалось распарсить ответ Shikimori")]
     ShikimoriParse,
+    #[error("Закончилось время ({0} секунд) на выполнение команды")]
+    Timeout(u64),
 }
 
 #[derive(Debug, Error)]

@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::ConfigError;
 
 pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const APP_NAME: &str = env!("CARGO_PKG_NAME");
 
 #[derive(Deserialize, Serialize)]
 pub struct Config {
@@ -27,7 +28,7 @@ impl Config {
         match std::env::var("ANI_DL_CONFIG").ok() {
             Some(value) => Ok(value.into()),
             None => {
-                let dir = dirs::config_dir().context(ConfigError::NotFound)?.join("ani-dl");
+                let dir = dirs::config_dir().context(ConfigError::NotFound)?.join(APP_NAME);
                 Ok(dir.join("config.toml"))
             }
         }

@@ -10,7 +10,7 @@ use crate::error::{NotFound, ShikimoriError};
 use crate::types::ReleaseItem;
 use crate::shikimori::Search as ShikimoriSearch;
 use crate::search;
-use crate::config::{Config, APP_VERSION};
+use crate::config::{Config, APP_VERSION, APP_NAME};
 
 /// CLI для просмотра/скачивания аниме
 ///
@@ -18,7 +18,7 @@ use crate::config::{Config, APP_VERSION};
 /// (по умолчанию создаётся в `~/.config/ani-dl/config.toml` при первом запуске)
 /// напишите `kodik_api_key = "ваш ключ"`
 #[derive(Parser, Debug)]
-#[command(name = "ani-dl", version)]
+#[command(name = APP_NAME, version)]
 struct Cli {
     /// Название аниме-тайтла
     query: Option<String>,
@@ -83,7 +83,6 @@ pub async fn run() -> Result<()> {
         seasons.first().cloned().context(NotFound::Seasons)?.1
     };
 
-    // TODO: Добавить настройку длины отступа длины нулями через CLI
     let episodes = search::get_episodes(&selected_season, &selected_translate, &PathBuf::from(&cli.output)).await?;
 
     let kodik_parser_client = KodikParserClient::new();

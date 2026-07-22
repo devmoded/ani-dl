@@ -1,0 +1,13 @@
+[package]
+name = "ani-dl"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ani-dl-cli = { path = "../ani-dl-cli" }
+ani-dl-core = { path = "../ani-dl-core" }
+tokio.workspace = true
+
+[[bin]]
+name = "ani-dl"
+path = "src/main.rs"

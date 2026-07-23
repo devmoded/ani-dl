@@ -2,7 +2,6 @@ use std::fmt;
 use anyhow::{Context, Result};
 use reqwest::Client;
 use serde::Deserialize;
-use crate::config::{APP_NAME, APP_VERSION};
 use crate::error::ShikimoriError;
 
 #[derive(Deserialize, Debug)]
@@ -20,22 +19,20 @@ impl fmt::Display for Anime {
     }
 }
 
-pub struct Search {
+pub struct Shikimori {
     api: String,
     client: Client,
 }
 
-impl Search {
-    pub fn new(api_url: &str) -> Result<Self> {
+impl Shikimori {
+    pub fn new(api_url: &str, client: Client) -> Result<Self> {
         Ok(Self {
             api: api_url.to_string(),
-            client: Client::builder()
-                .user_agent(format!("{APP_NAME}-rust/{APP_VERSION}"))
-                .build()?,
+            client,
         })
     }
 
-    pub async fn execute(&self, query: &str, limit: u32) -> Result<Vec<Anime>> {
+    pub async fn search(&self, query: &str, limit: u32) -> Result<Vec<Anime>> {
         let response: Vec<Anime> = self.client
             .get(&self.api)
             .query(&[

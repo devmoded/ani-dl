@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use kodik_api::{Client as ApiClient, search::{SearchResponse, SearchQuery}, types::EpisodeUnion};
 use kodik_parser::reqwest::Client as ResolveClient;
-use crate::engines::{Engine, Engines, Quality};
+use crate::engine::{Engine, Engines, Quality};
 use crate::types::{Response, Release, Translation, Season, Episode};
 use crate::error::EngineError;
 
@@ -40,17 +40,17 @@ impl Engine for Kodik {
         let m3u8 = match quality {
             Quality::Hd720p => links.quality_720
                 .first()
-                .context(EngineError::ResolveError { url })?
+                .context(EngineError::ResolveError { url, engine: Engines::Kodik })?
                 .src
                 .clone(),
             Quality::Sd480p => links.quality_480
                 .first()
-                .context(EngineError::ResolveError { url })?
+                .context(EngineError::ResolveError { url, engine: Engines::Kodik })?
                 .src
                 .clone(),
             Quality::Low360p => links.quality_360
                 .first()
-                .context(EngineError::ResolveError { url })?
+                .context(EngineError::ResolveError { url, engine: Engines::Kodik })?
                 .src
                 .clone(),
         };

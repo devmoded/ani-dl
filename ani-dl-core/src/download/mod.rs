@@ -8,7 +8,6 @@ use crate::types::EpisodeFile;
 use crate::config::Downloaders;
 
 pub enum Status {
-    // Inited,
     Downloading,
     Finished,
     FailAttempt,

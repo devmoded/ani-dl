@@ -13,7 +13,7 @@ dependencies = [
 
 [[package]]
 name = "ani-dl"
-version = "0.3.0"
+version = "0.3.2"
 dependencies = [
  "ani-dl-cli",
  "anyhow",
@@ -22,7 +22,7 @@ dependencies = [
 
 [[package]]
 name = "ani-dl-cli"
-version = "0.3.0"
+version = "0.3.2"
 dependencies = [
  "ani-dl-core",
  "anyhow",
@@ -36,7 +36,7 @@ dependencies = [
 
 [[package]]
 name = "ani-dl-core"
-version = "0.3.0"
+version = "0.3.2"
 dependencies = [
  "anyhow",
  "async-trait",

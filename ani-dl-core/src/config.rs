@@ -33,6 +33,13 @@ pub enum Engines {
 #[derive(Debug, Clone, Serialize, Deserialize, EnumString, Display)]
 #[strum(serialize_all = "snake_case")]
 #[serde(rename_all = "snake_case")]
+pub enum Players {
+    Mpv,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, EnumString, Display)]
+#[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum Quality {
     Hd720p,
     Sd480p,
@@ -47,6 +54,7 @@ pub struct Config {
     pub quality: Quality,
     pub downloader: Downloaders,
     pub engine: Engines,
+    pub player: Players,
     pub kodik_api_key: String,
     pub shikimori_api_url: String,
 }
@@ -58,6 +66,7 @@ impl Default for Config {
             quality: Quality::Hd720p,
             downloader: Downloaders::Ffmpeg,
             engine: Engines::Kodik,
+            player: Players::Mpv,
             kodik_api_key: String::default(),
             shikimori_api_url: "https://shikimori.io/api/animes".to_string(),
         }

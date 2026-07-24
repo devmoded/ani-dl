@@ -86,7 +86,7 @@ impl EpisodeFile {
 impl fmt::Display for EpisodeFile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO: Решить что делать с расширением файла
-        if self.raw_location.with_extension("mp4").exists() {
+        if self.raw_location.with_added_extension("mp4").exists() {
             write!(f, "{} [загружено]", &self.filename)
         } else {
             write!(f, "{}", &self.filename)

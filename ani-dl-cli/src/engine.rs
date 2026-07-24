@@ -7,7 +7,9 @@ use tokio::sync::mpsc;
 use ani_dl_core::shikimori::Shikimori;
 use ani_dl_core::types::EpisodeFile;
 use ani_dl_core::config::{Config, Mode, APP_NAME, APP_VERSION};
-use ani_dl_core::{download::{Progress, Status, download, playlist}, engine::{resolve_link, search}};
+use ani_dl_core::play::play;
+use ani_dl_core::engine::{resolve_link, search};
+use ani_dl_core::download::{Progress, Status, download, playlist};
 use ani_dl_core::error::CliError::EpisodesNotSelected;
 use ani_dl_core::error::EngineError::NotFoundSeasons;
 use ani_dl_core::error::ConfigError::{KodikApiKeyNotSet, ShikimoriApiUrlNotSet};
@@ -37,6 +39,10 @@ pub async fn run() -> Result<()> {
     if let Some(engine) = cli.engine {
         runtime_config.engine = engine;
     };
+    if let Some(player) = cli.player {
+        runtime_config.player = player;
+    };
+
     let query = match cli.query {
         Some(query) => query,
         None => inquire::Text::new("Что ищем?").prompt()?,
@@ -129,7 +135,11 @@ pub async fn run() -> Result<()> {
             for result in results { result?? }
             ui_task.await?;
         }
-        Mode::Play => {}
+        Mode::Play => {
+            let episode = inquire::Select::new("Выберите эпизод:", episodes).prompt()?;
+            let m3u8 = resolve_link(engine, &episode.raw_link, &runtime_config.quality, &kodik_api_key).await?;
+            play(&runtime_config.player, &episode, &m3u8).await?;
+        }
     }
 
 

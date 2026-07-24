@@ -26,8 +26,8 @@ impl Downloader for FfmpegDownloader {
         let id = episode.filename.clone();
         let export_format = "mp4";
         let path = episode.raw_location;
-        let tmp_path = path.with_extension("tmp");
-        let downloaded_path = path.with_extension(&export_format);
+        let tmp_path = path.with_added_extension("tmp");
+        let downloaded_path = path.with_added_extension(&export_format);
 
         for attempt in 1..=MAX_ATTEMPTS {
             match ffmpeg_download(&tx, &id, m3u8, duration, &export_format, &tmp_path).await {

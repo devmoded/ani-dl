@@ -28,6 +28,7 @@ pub enum ShikimoriError {
     ParseCrash,
 }
 
+// TODO: Сделать универсальный DownloaderError
 #[derive(Error, Debug)]
 pub enum FfmpegError {
     #[error("Время на выполнение: {0} (секунд) закончилось")]
@@ -36,6 +37,15 @@ pub enum FfmpegError {
     NotFound,
     #[error("Работа ffmpeg завершилась с ошибкой: \"{msg}\"")]
     Crash { msg: String },
+}
+
+// TODO: Сделать универсальный PlayerError
+#[derive(Error, Debug)]
+pub enum MpvError {
+    #[error("Не удалось найти исполняемый файл mpv")]
+    NotFound,
+    #[error("Работа mpv завершилась с ошибкой")]
+    Crash,
 }
 
 #[derive(Error, Debug)]

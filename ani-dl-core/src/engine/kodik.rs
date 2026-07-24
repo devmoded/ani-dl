@@ -13,7 +13,7 @@ pub struct Kodik {
 }
 
 impl Kodik {
-    fn new(key: impl Into<String>) -> Self {
+    pub fn new(key: impl Into<String>) -> Self {
         Self {
             api_client: ApiClient::new(key),
             resolve_client: ResolveClient::new(),
@@ -94,7 +94,7 @@ impl From<&kodik_api::types::Translation> for Translation {
 
 impl From<&kodik_api::types::Season> for Season {
     fn from(s: &kodik_api::types::Season) -> Self {
-        let episodes: Vec<Episode> = s.episodes
+        let mut episodes: Vec<Episode> = s.episodes
             .iter()
             .filter_map(|(key, ep)| {
                 let num: u32 = key.parse().ok()?;
@@ -105,6 +105,9 @@ impl From<&kodik_api::types::Season> for Season {
                 Some(Episode { num, link })
             })
             .collect();
+
+        episodes.sort_by_key(|ep| ep.num);
+
         Season {
             title: s.title.clone(),
             episodes,

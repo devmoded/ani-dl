@@ -1,83 +1,65 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
-use reqwest::Client;
-use futures::future::join_all;
 use tokio::time::{timeout, Duration};
-use tokio::{process::Command, sync::watch::Sender};
+use tokio::{process::Command, sync::mpsc::Sender};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
 use std::{process::Stdio, path::PathBuf};
 use crate::download::{Downloader, Progress, Status};
-use crate::download::playlist::{Playlist, fetch_playlist_info};
 use crate::{types::EpisodeFile, error::FfmpegError};
-
-pub struct FfmpegDownloader;
 
 const EXTERNAL_IDLE_TIMEOUT_SECS: u64 = 60;
 const MAX_ATTEMPTS: u32 = 5;
 
+pub struct FfmpegDownloader;
+
 #[async_trait]
 impl Downloader for FfmpegDownloader {
-    async fn download_episodes(
-        episodes: Vec<EpisodeFile>,
-        client: &Client,
-        tx: Sender<Progress>
-    ) -> Result<()> {
-        let mut tasks = Vec::new();
-
-        for episode in episodes {
-            let playlist = fetch_playlist_info(client, &episode.m3u8).await?;
-            send_progress(&tx, &playlist, Status::Downloading, 0, None);
-
-            let task = tokio::spawn(Self::download(episode, playlist, tx.clone()));
-            tasks.push(task);
-        };
-        let results = join_all(tasks).await;
-        for result in results {
-            result??;
-        }
-        Ok(())
-    }
     async fn download(
+        &self,
         episode: EpisodeFile,
-        playlist: Playlist,
-        tx: Sender<Progress>
+        m3u8: &str,
+        duration: f64,
+        tx: Sender<Progress>,
     ) -> Result<()> {
         let mut last_error = None;
 
+        let id = episode.filename.clone();
         let export_format = "mp4";
-        let path = episode.raw_location.join(&episode.filename);
+        let path = episode.raw_location;
         let tmp_path = path.with_extension("tmp");
         let downloaded_path = path.with_extension(&export_format);
 
         for attempt in 1..=MAX_ATTEMPTS {
-            match ffmpeg_download(&tx, &playlist, &export_format, &tmp_path).await {
+            match ffmpeg_download(&tx, &id, m3u8, duration, &export_format, &tmp_path).await {
                 Ok(()) => {
                     send_progress(
-                        &tx, &playlist, Status::Finished, playlist.total_segments,
+                        &tx, &id, duration, Status::Finished, duration as u64,
                         Some(format!("Загружено: {}", episode.filename))
-                    );
+                    ).await;
                     tokio::fs::rename(&tmp_path, &downloaded_path).await?;
                     return Ok(());
                 }
                 Err(e) => {
                     send_progress(
-                        &tx, &playlist, Status::FailAttempt, playlist.total_segments,
+                        &tx, &id, duration, Status::FailAttempt, duration as u64,
                         Some(format!("{} - попытка {attempt}/{MAX_ATTEMPTS}", episode.filename))
-                    );
+                    ).await;
                     last_error = Some(e);
                     tokio::time::sleep(Duration::from_secs(2)).await;
                 }
             }
         }
         let err = last_error.unwrap();
-        send_progress(&tx, &playlist, Status::Failed, playlist.total_segments, Some(err.to_string()));
+        send_progress(&tx, &id, duration, Status::Failed, duration as u64, Some(err.to_string())).await;
         Err(err)
     }
 }
 
 async fn ffmpeg_download(
     tx: &Sender<Progress>,
-    playlist: &Playlist,
+    id: &str,
+    m3u8_input: &str,
+    m3u8_duration: f64,
     export_format: &str,
     export_path: &PathBuf
 ) -> Result<()> {
@@ -90,7 +72,7 @@ async fn ffmpeg_download(
             "-reconnect_streamed", "1",
             "-reconnect_delay_max", "5",
             "-loglevel", "error",
-            "-i", &playlist.url,
+            "-i", m3u8_input,
             "-c", "copy",
             "-f", export_format,
             "-progress", "pipe:1",
@@ -109,7 +91,7 @@ async fn ffmpeg_download(
             Ok(Ok(Some(line))) => {
                 if let Some(time_str) = line.strip_prefix("out_time_ms=") {
                     if let Ok(microseconds) = time_str.parse::<u64>() {
-                        send_progress(&tx, playlist, Status::Downloading, (microseconds / 1_000_000) as u32, None);
+                        send_progress(&tx, id, m3u8_duration, Status::Downloading, (microseconds / 1_000_000) as u64, Some(id.to_string())).await;
                     }
                 }
             }
@@ -135,11 +117,12 @@ async fn ffmpeg_download(
 }
 
 // TODO: Решить, стоит ли переносить в Progress
-fn send_progress(tx: &Sender<Progress>, playlist: &Playlist, status: Status, downloaded: u32, msg: Option<String>) {
+async fn send_progress(tx: &Sender<Progress>, id: &str, total_segments: f64, status: Status, downloaded: u64, msg: Option<String>) {
     let _ = tx.send(Progress {
+        id: id.to_string(),
         status,
         downloaded_segments: downloaded,
-        total_segments: playlist.total_segments,
+        total_segments,
         msg,
-    });
+    }).await;
 }

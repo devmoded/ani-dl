@@ -1,6 +1,4 @@
 use std::{fmt, path::PathBuf};
-use anyhow::Result;
-use crate::engine::{Engine, Quality};
 
 #[derive(Debug, Clone)]
 pub struct Response {
@@ -59,20 +57,21 @@ impl fmt::Display for Episode {
 
 #[derive(Debug, Clone)]
 pub struct EpisodeFile {
-    pub m3u8: String,
+    pub num: u32,
+    pub raw_link: String,
     pub filename: String,
     pub raw_location: PathBuf,
 }
 
 impl EpisodeFile {
-    pub async fn new(episode: &Episode, engine: impl Engine, metadata: Option<&str>, output_dir: &PathBuf) -> Result<Self> {
-        Ok(Self {
-            // Сделать настраиваемое качество
-            m3u8: engine.resolve_link(&episode.link, &Quality::Hd720p).await?,
+    pub fn new(episode: &Episode, metadata: Option<&str>, output_dir: &PathBuf) -> Self {
+        Self {
+            num: episode.num,
+            raw_link: episode.link.clone(),
             // TODO: Решить как лучше создавать имя файла
             filename: Self::create_filename(&episode.num, metadata),
             raw_location: output_dir.clone().join(Self::create_filename(&episode.num, metadata)),
-        })
+        }
     }
 
     fn create_filename(episode_num: &u32, metadata: Option<&str>) -> String {

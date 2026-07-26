@@ -1,5 +1,5 @@
 use thiserror::Error;
-use crate::config::{Engines, Players};
+use crate::config::{Engines, Players, Downloaders};
 use crate::types::Release;
 
 #[derive(Error, Debug)]
@@ -28,15 +28,14 @@ pub enum ShikimoriError {
     ParseCrash,
 }
 
-// TODO: Сделать универсальный DownloaderError
 #[derive(Error, Debug)]
-pub enum FfmpegError {
-    #[error("Время на выполнение: {0} (секунд) закончилось")]
-    Timeout(u64),
-    #[error("Не удалось найти исполняемый файл ffmpeg")]
-    NotFound,
-    #[error("Работа ffmpeg завершилась с ошибкой: \"{msg}\"")]
-    Crash { msg: String },
+pub enum DownloaderError {
+    #[error("Время на выполнение {downloader}: {timeout} (секунд) закончилось")]
+    Timeout { downloader: Downloaders, timeout: u64 },
+    #[error("Не удалось найти исполняемый файл {downloader}")]
+    NotFound { downloader: Downloaders },
+    #[error("Работа {downloader} завершилась с ошибкой: \"{msg}\"")]
+    Crash { downloader: Downloaders, msg: String },
 }
 
 #[derive(Error, Debug)]

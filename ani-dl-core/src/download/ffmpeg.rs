@@ -5,7 +5,8 @@ use tokio::{process::Command, sync::mpsc::Sender};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader};
 use std::{process::Stdio, path::PathBuf};
 use crate::download::{Downloader, Progress, Status};
-use crate::{types::EpisodeFile, error::FfmpegError};
+use crate::config::Downloaders;
+use crate::{types::EpisodeFile, error::DownloaderError};
 
 const EXTERNAL_IDLE_TIMEOUT_SECS: u64 = 60;
 const MAX_ATTEMPTS: u32 = 5;
@@ -81,7 +82,7 @@ async fn ffmpeg_download(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .context(FfmpegError::NotFound)?;
+        .context(DownloaderError::NotFound { downloader: Downloaders::Ffmpeg })?;
 
     let ffmpeg_stdout = ffmpeg.stdout.take().unwrap();
     let mut lines = BufReader::new(ffmpeg_stdout).lines();
@@ -99,7 +100,7 @@ async fn ffmpeg_download(
             Ok(Err(e)) => return Err(e.into()),
             Err(_elapsed) => {
                 ffmpeg.kill().await.ok();
-                anyhow::bail!(FfmpegError::Timeout(EXTERNAL_IDLE_TIMEOUT_SECS));
+                anyhow::bail!(DownloaderError::Timeout { downloader: Downloaders::Ffmpeg, timeout: EXTERNAL_IDLE_TIMEOUT_SECS } );
             }
         }
     }
@@ -111,7 +112,7 @@ async fn ffmpeg_download(
         if let Some(mut stderr) = ffmpeg.stderr.take() {
             stderr.read_to_string(&mut stderr_output).await.ok();
         }
-        anyhow::bail!(FfmpegError::Crash { msg: stderr_output });
+        anyhow::bail!(DownloaderError::Crash { downloader: Downloaders::Ffmpeg, msg: stderr_output });
     }
     Ok(())
 }

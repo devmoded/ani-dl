@@ -46,20 +46,20 @@ pub async fn run_engine() -> Result<()> {
 
     if cli.verbose {
         println!(
-            "Режим: {}; Качество: {}; Рабочий каталог: {}\nДвижок: {}; Плеер: {}; Загрузчик: {}",
+            // TODO: Разобраться с выводом ID
+            "Режим: {}; Качество: {}; Рабочий каталог: {}
+            \rShikimori ID: {:?}; ID перевода: {:?}
+            \rДвижок: {}; Плеер: {}; Загрузчик: {}",
             style(&runtime_config.mode).green(),
             style(&runtime_config.quality).green(),
             style(&cli.work_dir).green(),
+            style(&cli.shikimori_id).green(),
+            style(&cli.translate_id).green(),
             style(&runtime_config.engine).green(),
             style(&runtime_config.player).green(),
             style(&runtime_config.downloader).green(),
         );
     }
-
-    let query = match cli.query {
-        Some(query) => query,
-        None => inquire::Text::new("Что ищем?").prompt()?,
-    };
 
     let kodik_api_key = runtime_config.kodik_api_key;
     anyhow::ensure!(!kodik_api_key.is_empty(), KodikApiKeyNotSet);
@@ -70,18 +70,39 @@ pub async fn run_engine() -> Result<()> {
         .user_agent(format!("{APP_NAME}-rust/{APP_VERSION}"))
         .build()?;
 
-    let shikimori_response = Shikimori::new(&shikimori_api_url, client.clone())?.search(&query, 10).await?;
-    let selected_anime = inquire::Select::new("Выберите аниме:", shikimori_response).prompt()?;
+    let shikimori_id = match &cli.shikimori_id {
+        Some(id) => id.to_string(),
+        None => {
+            let query = match cli.query {
+                Some(query) => query,
+                None => inquire::Text::new("Что ищем?").prompt()?,
+            };
+
+            let shikimori_response = Shikimori::new(&shikimori_api_url, client.clone())?.search(&query, 10).await?;
+            inquire::Select::new("Выберите аниме:", shikimori_response).prompt()?.id.to_string()
+        }
+    };
 
     let engine = &runtime_config.engine;
 
     let search_response = search(
         engine,
-        &selected_anime.id.to_string(),
+        &shikimori_id,
         &kodik_api_key,
     ).await?;
 
-    let translate = inquire::Select::new("Выберите перевод:", search_response.releases).prompt()?;
+    let translate = match &cli.translate_id {
+        Some(id) => {
+            match search_response.releases.iter().find(|r| &r.translation.id == id) {
+                Some(t) => t.clone(),
+                None => {
+                    println!("{}", style(format!("По указанному ID перевода {} не удалось найти перевод. Выберите вручную", id)).red());
+                    inquire::Select::new("Выберите перевод:", search_response.releases).prompt()?
+                }
+            }
+        }
+        None => inquire::Select::new("Выберите перевод:", search_response.releases).prompt()?,
+    };
 
     let seasons = translate.clone().seasons.unwrap_or_default();
 
@@ -91,6 +112,7 @@ pub async fn run_engine() -> Result<()> {
         seasons.first().cloned().context(NotFoundSeasons { engine: engine.clone(), release: translate.clone() })?
     };
 
+    // TODO: Сделать, чтобы путь разворачивал ~ и подобные
     let episodes: Vec<EpisodeFile> = season.episodes
         .iter()
         .map(|ep| EpisodeFile::new(&ep, Some(&translate.to_string()), &PathBuf::from(&cli.work_dir)))

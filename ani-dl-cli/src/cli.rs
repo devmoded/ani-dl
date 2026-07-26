@@ -32,6 +32,18 @@ pub struct Cli {
     #[arg(short, long)]
     pub player: Option<Players>,
 
+    /// Shikimori ID.
+    ///
+    /// Можно указать, чтобы нужное аниме было сразу выбрано.
+    #[arg(short, long)]
+    pub shikimori_id: Option<u32>,
+
+    /// ID перевода.
+    ///
+    /// Можно указать, чтобы нужный перевод был сразу выбран.
+    #[arg(short, long)]
+    pub translate_id: Option<u32>,
+
     /// Рабочий каталог.
     ///
     /// При загрузки файлы будут сохраняться здесь. При просмотре будет

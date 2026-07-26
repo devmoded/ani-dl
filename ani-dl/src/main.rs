@@ -1,8 +1,6 @@
-use ani_dl_cli::engine::run;
-use anyhow::Result;
+use ani_dl_cli::run;
 
 #[tokio::main]
-async fn main() -> Result<()> {
-    run().await?;
-    Ok(())
+async fn main() {
+    run().await;
 }

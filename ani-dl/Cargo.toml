@@ -6,7 +6,6 @@ edition.workspace = true
 [dependencies]
 ani-dl-cli = { path = "../ani-dl-cli" }
 tokio.workspace = true
-anyhow.workspace = true
 
 [[bin]]
 name = "ani-dl"

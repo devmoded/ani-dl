@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 use reqwest::Client;
 use futures::future::join_all;
 use tokio::sync::mpsc;
+use console::style;
 use ani_dl_core::shikimori::Shikimori;
 use ani_dl_core::types::EpisodeFile;
 use ani_dl_core::config::{Config, Mode, APP_NAME, APP_VERSION};
@@ -15,7 +16,7 @@ use ani_dl_core::error::EngineError::NotFoundSeasons;
 use ani_dl_core::error::ConfigError::{KodikApiKeyNotSet, ShikimoriApiUrlNotSet};
 use crate::cli::Cli;
 
-pub async fn run() -> Result<()> {
+pub async fn run_engine() -> Result<()> {
     let cli = Cli::parse();
 
     const KODIK_KEY_SCRIPT: &str = include_str!("../../scripts/gen_kodik_key.py");
@@ -42,6 +43,18 @@ pub async fn run() -> Result<()> {
     if let Some(player) = cli.player {
         runtime_config.player = player;
     };
+
+    if cli.verbose {
+        println!(
+            "Режим: {}; Качество: {}; Рабочий каталог: {}\nДвижок: {}; Плеер: {}; Загрузчик: {}",
+            style(&runtime_config.mode).green(),
+            style(&runtime_config.quality).green(),
+            style(&cli.work_dir).green(),
+            style(&runtime_config.engine).green(),
+            style(&runtime_config.player).green(),
+            style(&runtime_config.downloader).green(),
+        );
+    }
 
     let query = match cli.query {
         Some(query) => query,
@@ -80,18 +93,19 @@ pub async fn run() -> Result<()> {
 
     let episodes: Vec<EpisodeFile> = season.episodes
         .iter()
-        .map(|ep| EpisodeFile::new(&ep, Some(&translate.to_string()), &PathBuf::from(&cli.output_dir)))
+        .map(|ep| EpisodeFile::new(&ep, Some(&translate.to_string()), &PathBuf::from(&cli.work_dir)))
         .collect();
 
     match runtime_config.mode {
         Mode::Download => {
+            // TODO: Сделать, чтобы после выбора эпизоды отображались только в виде номеров
             let selected_episodes = inquire::MultiSelect::new("Выберите эпизоды:", episodes).prompt()?;
             anyhow::ensure!(!(selected_episodes.len() == 0), EpisodesNotSelected);
 
             let (tx, mut rx) = mpsc::channel::<Progress>(100);
             let multi = indicatif::MultiProgress::new();
 
-            let style = indicatif::ProgressStyle::with_template(
+            let progress_style = indicatif::ProgressStyle::with_template(
                 "{spinner:.green} {msg} [{bar:30.cyan/blue}] {percent}%"
             )?.progress_chars("⣿⣶⣤⣀");
 
@@ -103,11 +117,11 @@ pub async fn run() -> Result<()> {
                 let m3u8_duration = playlist::m3u8_duration(&client, &m3u8).await.unwrap_or(0.0);
 
                 let pb = multi.add(indicatif::ProgressBar::new(m3u8_duration as u64));
-                pb.set_style(style.clone());
+                pb.set_style(progress_style.clone());
                 pb.set_message(episode.filename.clone());
                 bars.insert(episode.filename.clone(), pb);
 
-                // TODO: Решить проблему с заимствованием
+                // TODO: Решить проблему с заимствованием, если она есть
                 let dl_task = tokio::spawn(download(
                     runtime_config.downloader.clone(),
                     episode, m3u8.clone(), m3u8_duration, tx.clone(),
@@ -121,11 +135,12 @@ pub async fn run() -> Result<()> {
                 while let Some(progress) = rx.recv().await {
                     if let Some(pb) = bars.get(&progress.id) {
                         pb.set_position(progress.downloaded_segments);
+                        let msg = progress.msg.unwrap_or_default();
                         match progress.status {
-                            Status::Downloading => { pb.set_message(progress.msg.unwrap_or_default()) }
-                            Status::Finished => { pb.finish_with_message(progress.msg.unwrap_or_default()) }
-                            Status::FailAttempt => { pb.set_message(progress.msg.unwrap_or_default()) }
-                            Status::Failed => { pb.set_message(progress.msg.unwrap_or_default()) }
+                            Status::Downloading => {}
+                            Status::Finished => { pb.finish_with_message(style(msg).green().to_string()) }
+                            Status::FailAttempt => { pb.set_message(style(msg).yellow().to_string()) }
+                            Status::Failed => { pb.set_message(style(msg).red().to_string()) }
                         }
                     }
                 }
@@ -149,7 +164,6 @@ pub async fn run() -> Result<()> {
             play(&runtime_config.player, &player_input).await?;
         }
     }
-
 
     Ok(())
 }

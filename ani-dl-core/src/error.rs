@@ -1,5 +1,5 @@
 use thiserror::Error;
-use crate::config::Engines;
+use crate::config::{Engines, Players};
 use crate::types::Release;
 
 #[derive(Error, Debug)]
@@ -39,13 +39,12 @@ pub enum FfmpegError {
     Crash { msg: String },
 }
 
-// TODO: Сделать универсальный PlayerError
 #[derive(Error, Debug)]
-pub enum MpvError {
-    #[error("Не удалось найти исполняемый файл mpv")]
-    NotFound,
-    #[error("Работа mpv завершилась с ошибкой")]
-    Crash,
+pub enum PlayerError {
+    #[error("Не удалось найти исполняемый файл плеера {player}")]
+    NotFound { player: Players },
+    #[error("Работа плеера {player} завершилась с ошибкой")]
+    Crash { player: Players },
 }
 
 #[derive(Error, Debug)]

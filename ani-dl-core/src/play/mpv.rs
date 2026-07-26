@@ -2,35 +2,22 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use tokio::process::Command;
 use crate::play::Player;
-use crate::types::EpisodeFile;
-use crate::error::MpvError;
+use crate::config::Players;
+use crate::error::PlayerError;
 
 pub struct Mpv;
 
 #[async_trait]
 impl Player for Mpv {
-    async fn play(&self, episode: &EpisodeFile, m3u8: &str) -> Result<()> {
-        // TODO: Сделать что-то с форматом
-        let file = episode.raw_location.with_added_extension("mp4");
+    async fn play(&self, input: &str) -> Result<()> {
+        let status = Command::new("mpv")
+            .arg("--network-timeout=20")
+            .arg(input)
+            .status()
+            .await
+            .context(PlayerError::NotFound { player: Players::Mpv })?;
 
-        if file.exists() {
-            play_mpv(&file.to_string_lossy().to_string()).await?;
-        } else {
-            play_mpv(&m3u8).await?;
-        }
-
+        anyhow::ensure!(status.success(), PlayerError::Crash { player: Players::Mpv });
         Ok(())
     }
-}
-
-async fn play_mpv(m3u8: &str) -> Result<()> {
-    let status = Command::new("mpv")
-        .arg("--network-timeout=20")
-        .arg(m3u8)
-        .status()
-        .await
-        .context(MpvError::NotFound)?;
-
-    anyhow::ensure!(status.success(), MpvError::Crash);
-    Ok(())
 }

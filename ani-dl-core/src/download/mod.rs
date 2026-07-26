@@ -20,19 +20,7 @@ pub struct Progress {
     pub downloaded_segments: u64,
     pub total_segments: f64,
     pub msg: Option<String>,
-    // pub elapsed: Duration,
 }
-
-// impl Default for Progress {
-//     fn default() -> Self {
-//         Self {
-//             status: Status::Inited,
-//             downloaded_segments: 0,
-//             total_segments: 0,
-//             msg: None,
-//         }
-//     }
-// }
 
 #[async_trait]
 pub trait Downloader {

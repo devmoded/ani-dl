@@ -137,8 +137,16 @@ pub async fn run() -> Result<()> {
         }
         Mode::Play => {
             let episode = inquire::Select::new("Выберите эпизод:", episodes).prompt()?;
-            let m3u8 = resolve_link(engine, &episode.raw_link, &runtime_config.quality, &kodik_api_key).await?;
-            play(&runtime_config.player, &episode, &m3u8).await?;
+            // TODO: Сделать что-то с форматом
+            let file = episode.raw_location.with_added_extension("mp4");
+
+            let player_input = if file.exists() {
+                file.to_string_lossy().to_string()
+            } else {
+                resolve_link(engine, &episode.raw_link, &runtime_config.quality, &kodik_api_key).await?
+            };
+
+            play(&runtime_config.player, &player_input).await?;
         }
     }
 

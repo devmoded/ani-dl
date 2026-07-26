@@ -30,6 +30,9 @@ impl Engine for Kodik {
             .execute(&self.api_client)
             .await
             .context(EngineError::SearchError { engine: Engines::Kodik })?;
+
+        anyhow::ensure!(response.results.len() != 0, EngineError::SearchError { engine: Engines::Kodik });
+
         Ok(Response::from(&response))
     }
 

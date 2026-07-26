@@ -6,6 +6,7 @@ use inquire::InquireError;
 
 pub async fn run() {
     match engine::run_engine().await {
+        // TODO: Улучшить обработку ошибок
         Ok(()) => {  }
         Err(err) => {
             if let Some(inquire_err) = err.downcast_ref::<InquireError>() {

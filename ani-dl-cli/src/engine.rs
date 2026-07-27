@@ -46,15 +46,17 @@ pub async fn run_engine() -> Result<()> {
 
     if cli.verbose {
         println!(
-            // TODO: Разобраться с выводом ID
+            // TODO: Разобраться с выводом ID и эпизодов
             "Режим: {}; Качество: {}; Рабочий каталог: {}
             \rShikimori ID: {:?}; ID перевода: {:?}
+            \rВыбранные эпизоды: {:?}
             \rДвижок: {}; Плеер: {}; Загрузчик: {}",
             style(&runtime_config.mode).green(),
             style(&runtime_config.quality).green(),
             style(&cli.work_dir).green(),
             style(&cli.shikimori_id).green(),
             style(&cli.translate_id).green(),
+            style(&cli.episode).green(),
             style(&runtime_config.engine).green(),
             style(&runtime_config.player).green(),
             style(&runtime_config.downloader).green(),
@@ -91,18 +93,17 @@ pub async fn run_engine() -> Result<()> {
         &kodik_api_key,
     ).await?;
 
-    let translate = match &cli.translate_id {
-        Some(id) => {
-            match search_response.releases.iter().find(|r| &r.translation.id == id) {
-                Some(t) => t.clone(),
-                None => {
-                    println!("{}", style(format!("По указанному ID перевода {} не удалось найти перевод. Выберите вручную", id)).red());
-                    inquire::Select::new("Выберите перевод:", search_response.releases).prompt()?
+    let translate = match cli.translate_id
+        .as_ref()
+        .and_then(|id| search_response.releases.iter().find(|r| &r.translation.id == id)) {
+            Some(t) => t.clone(),
+            None => {
+                if let Some(id) = cli.translate_id {
+                    println!("{}", style(format!("По указанному ID перевода {id} не удалось найти перевод. Выберите вручную")).red());
                 }
+                inquire::Select::new("Выберите перевод:", search_response.releases).prompt()?
             }
-        }
-        None => inquire::Select::new("Выберите перевод:", search_response.releases).prompt()?,
-    };
+        };
 
     let seasons = translate.clone().seasons.unwrap_or_default();
 
@@ -120,9 +121,30 @@ pub async fn run_engine() -> Result<()> {
 
     match runtime_config.mode {
         Mode::Download => {
-            // TODO: Сделать, чтобы после выбора эпизоды отображались только в виде номеров
-            let selected_episodes = inquire::MultiSelect::new("Выберите эпизоды:", episodes).prompt()?;
-            anyhow::ensure!(!(selected_episodes.len() == 0), EpisodesNotSelected);
+            let selected_episodes = match &cli.episode {
+                Some(nums) => {
+                    let (found, not_found): (Vec<&u32>, Vec<&u32>) = nums.iter()
+                        .partition(|num| episodes.iter().any(|ep| &ep.num == *num));
+
+                    for num in &not_found {
+                        println!("{}", style(format!("Эпизод {num} не найден.")).red());
+                    }
+
+                    found.into_iter()
+                        .filter_map(|num| episodes.iter().find(|ep| &ep.num == num).cloned())
+                        .collect()
+                }
+                None => Vec::new()
+            };
+
+            let selected_episodes = if selected_episodes.is_empty() {
+                // TODO: Сделать, чтобы после выбора эпизоды отображались только в виде номеров
+                inquire::MultiSelect::new("Выберите эпизоды:", episodes).prompt()?
+            } else {
+                selected_episodes
+            };
+            anyhow::ensure!(!selected_episodes.is_empty(), EpisodesNotSelected);
+
 
             let (tx, mut rx) = mpsc::channel::<Progress>(100);
             let multi = indicatif::MultiProgress::new();
@@ -173,7 +195,19 @@ pub async fn run_engine() -> Result<()> {
             ui_task.await?;
         }
         Mode::Play => {
-            let episode = inquire::Select::new("Выберите эпизод:", episodes).prompt()?;
+            let episode = match cli.episode
+                .as_ref()
+                .and_then(|nums| nums.first())
+                .and_then(|num| episodes.iter().find(|ep| &ep.num == num)) {
+                    Some(ep) => ep.clone(),
+                    None => {
+                        if let Some(num) = cli.episode.as_ref().and_then(|nums| nums.first()) {
+                            println!("{}", style(format!("Эпизод {num} не найден. Выберите вручную")).red());
+                        }
+                        inquire::Select::new("Выберите эпизод:", episodes).prompt()?
+                    }
+                };
+
             // TODO: Сделать что-то с форматом
             let file = episode.raw_location.with_added_extension("mp4");
 

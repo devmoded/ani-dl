@@ -21,15 +21,15 @@ pub struct Cli {
     pub quality: Option<Quality>,
 
     /// Загрузчик. По умолчанию: ffmpeg. Доступные варианты: [ffmpeg]
-    #[arg(short, long)]
+    #[arg(short = 'D', long)]
     pub downloader: Option<Downloaders>,
 
     /// Движок. По умолчанию: kodik. Доступные варианты: [kodik]
-    #[arg(short, long)]
+    #[arg(short = 'E', long)]
     pub engine: Option<Engines>,
 
     /// Проигрыватель. По умолчанию: mpv. Доступные варианты: [mpv]
-    #[arg(short, long)]
+    #[arg(short = 'P', long)]
     pub player: Option<Players>,
 
     /// Shikimori ID.
@@ -43,6 +43,12 @@ pub struct Cli {
     /// Можно указать, чтобы нужный перевод был сразу выбран.
     #[arg(short, long)]
     pub translate_id: Option<u32>,
+
+    /// Номер эпизода, или эпизодов.
+    ///
+    /// Можно указать, чтобы нужный эпизод, или эпизоды были сразу выбраны.
+    #[arg(short, long)]
+    pub episode: Option<Vec<u32>>,
 
     /// Рабочий каталог.
     ///

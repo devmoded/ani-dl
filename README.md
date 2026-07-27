@@ -4,6 +4,8 @@
 # Возможности
 - Поиск по названию
 - Одновременное скачивание нескольких эпизодов
+- Возможность небольшой автоматизации: указание Shikimori ID, ID перевода, 
+эпизодов
 
 # Установить
 [![Linux download](https://badgen.net/badge/Linux/Скачать/black?icon=linux)](https://github.com/devmoded/ani-dl/releases/latest/download/ani-dl)

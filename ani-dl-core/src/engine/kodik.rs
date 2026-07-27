@@ -31,7 +31,7 @@ impl Engine for Kodik {
             .await
             .context(EngineError::SearchError { engine: Engines::Kodik })?;
 
-        anyhow::ensure!(response.results.len() != 0, EngineError::SearchError { engine: Engines::Kodik });
+        anyhow::ensure!(!response.results.is_empty(), EngineError::SearchError { engine: Engines::Kodik });
 
         Ok(Response::from(&response))
     }

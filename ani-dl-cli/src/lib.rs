@@ -15,7 +15,7 @@ pub async fn run() {
                     _ => {}
                 }
             } else {
-                eprintln!("{}", style(err.to_string()).red());
+                eprintln!("Ошибка: {}:\n\n{}", style(err.to_string()).red(), err.root_cause().to_string());
             }
         }
     }

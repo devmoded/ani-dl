@@ -16,11 +16,10 @@ pub async fn search(
     shikimori_id: &str,
     key: impl Into<String>
 ) -> Result<Response> {
-    let engine = match engine {
-        Engines::Kodik => kodik::Kodik::new(key),
+    let response = match engine {
+        Engines::Kodik => kodik::Kodik::new(key).search(shikimori_id).await?,
     };
 
-    let response = engine.search(shikimori_id).await?;
     Ok(response)
 }
 
@@ -30,10 +29,9 @@ pub async fn resolve_link(
     quality: &Quality,
     key: impl Into<String>
 ) -> Result<String> {
-    let engine = match engine {
-        Engines::Kodik => kodik::Kodik::new(key),
+    let link = match engine {
+        Engines::Kodik => kodik::Kodik::new(key).resolve_link(url, quality).await?,
     };
 
-    let link = engine.resolve_link(url, quality).await?;
     Ok(link)
 }

@@ -40,11 +40,9 @@ pub async fn download (
     duration: f64,
     progress_tx: Sender<Progress>
 ) -> Result<()> {
-    let downloader = match downloader {
-        Downloaders::Ffmpeg => ffmpeg::FfmpegDownloader,
+    match downloader {
+        Downloaders::Ffmpeg => ffmpeg::FfmpegDownloader.download(episode, &m3u8, duration, progress_tx).await?,
     };
-
-    downloader.download(episode, &m3u8, duration, progress_tx).await?;
 
     Ok(())
 }

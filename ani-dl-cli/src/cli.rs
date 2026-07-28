@@ -28,7 +28,7 @@ pub struct Cli {
     #[arg(short = 'E', long)]
     pub engine: Option<Engines>,
 
-    /// Проигрыватель. По умолчанию: mpv. Доступные варианты: [mpv]
+    /// Проигрыватель. По умолчанию: mpv. Доступные варианты: [mpv, cine]
     #[arg(short = 'P', long)]
     pub player: Option<Players>,
 

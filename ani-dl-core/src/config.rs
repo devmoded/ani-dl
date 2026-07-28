@@ -35,6 +35,7 @@ pub enum Engines {
 #[serde(rename_all = "snake_case")]
 pub enum Players {
     Mpv,
+    Cine,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, EnumString, Display)]

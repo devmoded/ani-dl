@@ -80,7 +80,11 @@ impl From<&kodik_api::types::Release> for Release {
                 Some(seasons) => {
                     Some(seasons.iter().map(|(_, s)| Season::from(s)).collect())
                 }
-                None => None,
+                // TODO: Попытаться сделать получше
+                None => Some(vec!(Season {
+                    title: None,
+                    episodes: vec!(Episode { num: 1, link: r.link.clone() }),
+                })),
             },
         }
     }

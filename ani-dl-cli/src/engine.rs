@@ -214,6 +214,7 @@ pub async fn run_engine() -> Result<()> {
             let player_input = if file.exists() {
                 file.to_string_lossy().to_string()
             } else {
+                // TODO: Сделать что-нибудь с передачей ключа
                 resolve_link(engine, &episode.raw_link, &runtime_config.quality, &kodik_api_key).await?
             };
 

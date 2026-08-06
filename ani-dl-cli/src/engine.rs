@@ -11,7 +11,7 @@ use ani_dl_core::config::{Config, Mode, APP_NAME, APP_VERSION};
 use ani_dl_core::play::play;
 use ani_dl_core::engine::{resolve_link, search};
 use ani_dl_core::download::{Progress, Status, download, playlist};
-use ani_dl_core::error::CliError::EpisodesNotSelected;
+use ani_dl_core::error::CliError::{EpisodesNotSelected, ArgIsNotSet};
 use ani_dl_core::error::EngineError::NotFoundSeasons;
 use ani_dl_core::error::ConfigError::{KodikApiKeyNotSet, ShikimoriApiUrlNotSet};
 use crate::cli::Cli;
@@ -75,6 +75,7 @@ pub async fn run_engine() -> Result<()> {
     let shikimori_id = match &cli.shikimori_id {
         Some(id) => id.to_string(),
         None => {
+            anyhow::ensure!(!cli.non_interactive, ArgIsNotSet { arg: "shikimori_id".to_string() });
             let query = match cli.query {
                 Some(query) => query,
                 None => inquire::Text::new("Что ищем?").prompt()?,
@@ -98,6 +99,7 @@ pub async fn run_engine() -> Result<()> {
         .and_then(|id| search_response.releases.iter().find(|r| &r.translation.id == id)) {
             Some(t) => t.clone(),
             None => {
+                anyhow::ensure!(!cli.non_interactive, ArgIsNotSet { arg: "translation_id".to_string() });
                 if let Some(id) = cli.translate_id {
                     println!("{}", style(format!("По указанному ID перевода {id} не удалось найти перевод. Выберите вручную")).red());
                 }
@@ -107,6 +109,7 @@ pub async fn run_engine() -> Result<()> {
 
     let seasons = translate.clone().seasons.unwrap_or_default();
 
+    // TODO: Сделать что-то для не интерактивного режима
     let season = if seasons.len() > 1 {
         inquire::Select::new("Выберите сезон:", seasons).prompt()?
     } else {
@@ -138,6 +141,7 @@ pub async fn run_engine() -> Result<()> {
             };
 
             let selected_episodes = if selected_episodes.is_empty() {
+                anyhow::ensure!(!cli.non_interactive, ArgIsNotSet { arg: "episode".to_string() });
                 // TODO: Сделать, чтобы после выбора эпизоды отображались только в виде номеров
                 inquire::MultiSelect::new("Выберите эпизоды:", episodes).prompt()?
             } else {
@@ -202,8 +206,9 @@ pub async fn run_engine() -> Result<()> {
                     Some(ep) => ep.clone(),
                     None => {
                         if let Some(num) = cli.episode.as_ref().and_then(|nums| nums.first()) {
-                            println!("{}", style(format!("Эпизод {num} не найден. Выберите вручную")).red());
+                            println!("{}", style(format!("Эпизод {num} не найден.")).red());
                         }
+                        anyhow::ensure!(!cli.non_interactive, ArgIsNotSet { arg: "episode".to_string() });
                         inquire::Select::new("Выберите эпизод:", episodes).prompt()?
                     }
                 };

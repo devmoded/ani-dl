@@ -14,6 +14,8 @@ pub enum EngineError {
 
 #[derive(Error, Debug)]
 pub enum CliError {
+    #[error("Аргумент {arg} не указан")]
+    ArgIsNotSet { arg: String },
     #[error("Эпизоды не выбраны")]
     EpisodesNotSelected,
 }

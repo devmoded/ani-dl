@@ -30,6 +30,15 @@ impl Downloader for FfmpegDownloader {
         let tmp_path = path.with_added_extension("tmp");
         let downloaded_path = path.with_added_extension(&export_format);
 
+        if let Some(parent) = tmp_path.parent() {
+            tokio::fs::create_dir_all(parent)
+                .await
+                .context(DownloaderError::Crash {
+                    downloader: Downloaders::Ffmpeg,
+                    msg: format!("Не удалось создать директорию {}", parent.to_string_lossy())
+                })?;
+        }
+
         for attempt in 1..=MAX_ATTEMPTS {
             match ffmpeg_download(&tx, &id, m3u8, duration, &export_format, &tmp_path).await {
                 Ok(()) => {

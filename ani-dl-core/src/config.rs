@@ -47,7 +47,6 @@ pub enum Quality {
     Low360p,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {

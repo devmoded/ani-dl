@@ -57,6 +57,10 @@ pub struct Cli {
     #[arg(short, long, default_value = ".")]
     pub work_dir: String,
 
+    /// Включить не интерактивный режим работы
+    #[arg(short, long)]
+    pub non_interactive: bool,
+
     /// Сгенерировать Python скрипт для получения ключа KODIK API
     #[arg(long)]
     pub gen_kodik_key_script: bool,
